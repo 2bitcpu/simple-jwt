@@ -3,7 +3,7 @@ use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 use std::sync::LazyLock;
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Claims {
     pub iss: String, // issuer (JWTの発行者)
     pub sub: String, // subject (ユーザーの識別子)
