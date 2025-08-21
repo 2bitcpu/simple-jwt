@@ -3,6 +3,8 @@ use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 use std::sync::LazyLock;
 
+static JWT_SECRET: LazyLock<String> = LazyLock::new(|| uuid::Uuid::new_v4().to_string());
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Claims {
     pub iss: String, // issuer (JWTの発行者)
@@ -25,28 +27,24 @@ impl Claims {
     }
 }
 
-static SECRET: LazyLock<String> = LazyLock::new(|| uuid::Uuid::new_v4().to_string());
-
 pub fn encode(claims: &Claims) -> Result<String, jsonwebtoken::errors::Error> {
     Ok(jsonwebtoken::encode(
         &Header::default(),
         &claims,
-        &EncodingKey::from_secret(SECRET.to_string().as_bytes()),
+        &EncodingKey::from_secret(JWT_SECRET.to_string().as_bytes()),
     )?)
 }
 
 pub fn decode(token: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
+    let mut validation = Validation::default();
+    validation.leeway = 30;
+    validation.validate_exp = true;
+    validation.set_issuer(&[env!("CARGO_PKG_NAME")]);
     let claims: Claims = jsonwebtoken::decode::<Claims>(
         &token,
-        &DecodingKey::from_secret(SECRET.to_string().as_ref()),
-        &Validation::default(),
+        &DecodingKey::from_secret(JWT_SECRET.to_string().as_ref()),
+        &validation,
     )?
     .claims;
-
-    // 有効期限のチェック(デフォルトでチェックされるはずなのだが...)
-    if claims.exp < Utc::now().timestamp() {
-        return Err(jsonwebtoken::errors::ErrorKind::ExpiredSignature.into());
-    }
-
     Ok(claims)
 }
