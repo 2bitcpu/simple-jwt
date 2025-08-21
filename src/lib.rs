@@ -7,8 +7,8 @@ static JWT_SECRET: LazyLock<String> = LazyLock::new(|| uuid::Uuid::new_v4().to_s
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Claims {
-    pub iss: String, // issuer (JWTの発行者)
     pub sub: String, // subject (ユーザーの識別子)
+    pub iss: String, // issuer (JWTの発行者)
     pub iat: i64,    // Issued At (発行日時)
     pub exp: i64,    // expiration time (トークンの有効期限)
     pub jti: String, // JWT ID (JWTの一意な識別子)
@@ -18,8 +18,8 @@ impl Claims {
     pub fn new(sub: &str, duration_seconds: i64) -> Self {
         let current_time: DateTime<Utc> = Utc::now();
         Self {
-            iss: env!("CARGO_PKG_NAME").to_string(),
             sub: sub.to_string(),
+            iss: env!("CARGO_PKG_NAME").to_string(),
             iat: current_time.timestamp(),
             exp: current_time.timestamp() + duration_seconds,
             jti: uuid::Uuid::new_v4().to_string(),
