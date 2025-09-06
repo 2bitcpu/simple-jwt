@@ -1,9 +1,6 @@
 use chrono::{DateTime, Utc};
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
-use std::sync::LazyLock;
-
-static JWT_SECRET: LazyLock<String> = LazyLock::new(|| uuid::Uuid::new_v4().to_string());
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Claims {
@@ -15,11 +12,11 @@ pub struct Claims {
 }
 
 impl Claims {
-    pub fn new(sub: &str, duration_seconds: i64) -> Self {
+    pub fn new(subject: &str, issuer: &str, duration_seconds: i64) -> Self {
         let current_time: DateTime<Utc> = Utc::now();
         Self {
-            sub: sub.to_string(),
-            iss: env!("CARGO_PKG_NAME").to_string(),
+            sub: subject.to_string(),
+            iss: issuer.to_string(),
             iat: current_time.timestamp(),
             exp: current_time.timestamp() + duration_seconds,
             jti: uuid::Uuid::new_v4().to_string(),
@@ -27,22 +24,31 @@ impl Claims {
     }
 }
 
-pub fn encode(claims: &Claims) -> Result<String, jsonwebtoken::errors::Error> {
+pub fn encode(claims: &Claims, secret: &str) -> Result<String, jsonwebtoken::errors::Error> {
     Ok(jsonwebtoken::encode(
         &Header::default(),
         &claims,
-        &EncodingKey::from_secret(JWT_SECRET.to_string().as_bytes()),
+        &EncodingKey::from_secret(secret.to_string().as_bytes()),
     )?)
 }
 
-pub fn decode(token: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
+pub fn decode(
+    token: &str,
+    issuer: &str,
+    secret: &str,
+    validate_exp: bool,
+) -> Result<Claims, jsonwebtoken::errors::Error> {
     let mut validation = Validation::default();
-    validation.leeway = 30;
-    validation.validate_exp = true;
-    validation.set_issuer(&[env!("CARGO_PKG_NAME")]);
+    if validate_exp {
+        validation.leeway = 30;
+        validation.validate_exp = true;
+    } else {
+        validation.validate_exp = false;
+    }
+    validation.set_issuer(&[issuer]);
     let claims: Claims = jsonwebtoken::decode::<Claims>(
         &token,
-        &DecodingKey::from_secret(JWT_SECRET.to_string().as_ref()),
+        &DecodingKey::from_secret(secret.to_string().as_ref()),
         &validation,
     )?
     .claims;
